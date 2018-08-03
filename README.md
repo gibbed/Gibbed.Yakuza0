@@ -11,6 +11,8 @@ Like what I've done? **[Consider supporting me on Patreon](http://patreon.com/gi
 *Experimental!*
 
 * Unpacker for `.par` files.
+* Packer for `.par` files.
+    * **Untested!**
 
 ## Instructions
 
