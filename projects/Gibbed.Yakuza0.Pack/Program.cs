@@ -181,6 +181,8 @@ namespace Gibbed.Yakuza0.Pack
                     {
                         var dataSize = (uint)input.Length;
 
+                        output.Position = output.Position.Align(alignment);
+
                         if (output.Position > 0xfFFFFFFFFL)
                         {
                             throw new InvalidOperationException("unsupported data offset");
@@ -197,7 +199,6 @@ namespace Gibbed.Yakuza0.Pack
                         if (dataSize > 0)
                         {
                             output.WriteFromStream(input, dataSize);
-                            output.Position = output.Position.Align(alignment);
                         }
                     }
                 }
