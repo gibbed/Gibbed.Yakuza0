@@ -212,14 +212,15 @@ namespace Gibbed.Yakuza0.FileFormats
                     var fileEntry = kv.Value;
 
                     RawFileEntry rawFileEntry;
-                    rawFileEntry.DataFlags = fileEntry.IsCompressed == true ? 0x80000000u : 0u;
+                    rawFileEntry.CompressionFlags = fileEntry.IsCompressed == true ? 0x80000000u : 0u;
                     rawFileEntry.DataUncompressedSize = fileEntry.DataUncompressedSize;
                     rawFileEntry.DataCompressedSize = fileEntry.DataCompressedSize;
-                    rawFileEntry.DataOffset = fileEntry.DataOffset;
-                    rawFileEntry.Unknown10 = fileEntry.DataHeaderSize;
+                    rawFileEntry.DataOffsetLo = (uint)fileEntry.DataOffset;
+                    rawFileEntry.Unknown10 = 0;
                     rawFileEntry.Unknown14 = 0;
                     rawFileEntry.Unknown18 = 0;
-                    rawFileEntry.Unknown1C = fileEntry.DataHash;
+                    rawFileEntry.Unknown1C = 0;
+                    rawFileEntry.DataOffsetHi = (byte)((fileEntry.DataOffset >> 32) & 0xFu);
 
                     rawFileEntries.Add(rawFileEntry);
                     fileNames.Add(fileName);
@@ -380,7 +381,7 @@ namespace Gibbed.Yakuza0.FileFormats
                 for (uint i = 0; i < fileCount; i++)
                 {
                     var fileEntry = rawFileEntries[i] = RawFileEntry.Read(input, endian);
-                    if ((fileEntry.DataFlags & 0x7FFFFFFFu) != 0)
+                    if ((fileEntry.CompressionFlags & 0x7FFFFFFFu) != 0)
                     {
                         throw new FormatException();
                     }
@@ -428,12 +429,13 @@ namespace Gibbed.Yakuza0.FileFormats
                         fileEntry.Path = directoryPath == null
                                              ? fileNames[o]
                                              : Path.Combine(directoryPath, fileNames[o]);
-                        fileEntry.IsCompressed = ((FileFlags)rawFileEntry.DataFlags & FileFlags.IsCompressed) != 0;
+                        fileEntry.IsCompressed = ((FileFlags)rawFileEntry.CompressionFlags & FileFlags.IsCompressed) !=
+                                                 0;
                         fileEntry.DataUncompressedSize = rawFileEntry.DataUncompressedSize;
                         fileEntry.DataCompressedSize = rawFileEntry.DataCompressedSize;
-                        fileEntry.DataOffset = rawFileEntry.DataOffset;
-                        fileEntry.DataHeaderSize = rawFileEntry.Unknown10;
-                        fileEntry.DataHash = rawFileEntry.Unknown1C;
+                        fileEntry.DataOffset =
+                            (long)(rawFileEntry.DataOffsetLo) << 0 |
+                            (long)(rawFileEntry.DataOffsetHi) << 32;
                         fileEntries.Add(fileEntry);
                     }
                 }
@@ -518,22 +520,32 @@ namespace Gibbed.Yakuza0.FileFormats
 
         private struct RawFileEntry
         {
-            public uint DataFlags;
+            public uint CompressionFlags;
             public uint DataUncompressedSize;
             public uint DataCompressedSize;
-            public uint DataOffset;
+            public uint DataOffsetLo;
             public uint Unknown10; // probably header size?
             public uint Unknown14;
             public uint Unknown18;
             public uint Unknown1C; // probably data hash?
 
+            public byte DataOffsetHi
+            {
+                get { return (byte)(this.Unknown14 & 0xFu); }
+                set
+                {
+                    this.Unknown14 &= ~0xFu;
+                    this.Unknown14 |= value & 0xFu;
+                }
+            }
+
             public static RawFileEntry Read(Stream input, Endian endian)
             {
                 RawFileEntry instance;
-                instance.DataFlags = input.ReadValueU32(endian);
+                instance.CompressionFlags = input.ReadValueU32(endian);
                 instance.DataUncompressedSize = input.ReadValueU32(endian);
                 instance.DataCompressedSize = input.ReadValueU32(endian);
-                instance.DataOffset = input.ReadValueU32(endian);
+                instance.DataOffsetLo = input.ReadValueU32(endian);
                 instance.Unknown10 = input.ReadValueU32(endian);
                 instance.Unknown14 = input.ReadValueU32(endian);
                 instance.Unknown18 = input.ReadValueU32(endian);
@@ -543,10 +555,10 @@ namespace Gibbed.Yakuza0.FileFormats
 
             public static void Write(Stream output, RawFileEntry instance, Endian endian)
             {
-                output.WriteValueU32(instance.DataFlags, endian);
+                output.WriteValueU32(instance.CompressionFlags, endian);
                 output.WriteValueU32(instance.DataUncompressedSize, endian);
                 output.WriteValueU32(instance.DataCompressedSize, endian);
-                output.WriteValueU32(instance.DataOffset, endian);
+                output.WriteValueU32(instance.DataOffsetLo, endian);
                 output.WriteValueU32(instance.Unknown10, endian);
                 output.WriteValueU32(instance.Unknown14, endian);
                 output.WriteValueU32(instance.Unknown18, endian);
@@ -562,10 +574,10 @@ namespace Gibbed.Yakuza0.FileFormats
             {
                 return string.Format(
                     "flags={0:X}, usize={1:X}, csize={2:X}, offset={3:X}, {4:X}, {5:X}, {6:X}, {7:X}",
-                    this.DataFlags,
+                    this.CompressionFlags,
                     this.DataUncompressedSize,
                     this.DataCompressedSize,
-                    this.DataOffset,
+                    this.DataOffsetLo,
                     this.Unknown10,
                     this.Unknown14,
                     this.Unknown18,
@@ -579,9 +591,7 @@ namespace Gibbed.Yakuza0.FileFormats
             public bool IsCompressed;
             public uint DataUncompressedSize;
             public uint DataCompressedSize;
-            public uint DataOffset;
-            public uint DataHeaderSize;
-            public uint DataHash;
+            public long DataOffset;
 
             public override string ToString()
             {

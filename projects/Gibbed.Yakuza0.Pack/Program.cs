@@ -100,7 +100,7 @@ namespace Gibbed.Yakuza0.Pack
                 inputPaths.AddRange(extras.Skip(1));
             }
 
-            var pendingEntries = new Dictionary<string, KeyValuePair<string, string>>();
+            var pendingEntries = new SortedDictionary<string, KeyValuePair<string, string>>();
 
             if (verbose == true)
             {
@@ -181,14 +181,17 @@ namespace Gibbed.Yakuza0.Pack
                     {
                         var dataSize = (uint)input.Length;
 
+                        if (output.Position > 0xfFFFFFFFFL)
+                        {
+                            throw new InvalidOperationException("unsupported data offset");
+                        }
+
                         ArchiveFile.FileEntry fileEntry;
                         fileEntry.Path = partPath;
                         fileEntry.IsCompressed = false;
                         fileEntry.DataUncompressedSize = dataSize;
                         fileEntry.DataCompressedSize = dataSize;
-                        fileEntry.DataOffset = (uint)output.Position;
-                        fileEntry.DataHeaderSize = 0; // TODO(gibbed): Figure out what should go here.
-                        fileEntry.DataHash = uint.MaxValue; // TODO(gibbed): Figure out what should go here.
+                        fileEntry.DataOffset = output.Position;
                         archive.Entries.Add(fileEntry);
 
                         if (dataSize > 0)
