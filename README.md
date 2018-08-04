@@ -10,9 +10,9 @@ Like what I've done? **[Consider supporting me on Patreon](http://patreon.com/gi
 
 *Experimental!*
 
-* Unpacker for `.par` files.
-* Packer for `.par` files.
-    * No compression (yet).
+* Unpacker for `.par` archive files.
+* Packer for `.par` archive files.
+    * No support for compressing files yet.
 
 ## Instructions
 
