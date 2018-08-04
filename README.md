@@ -12,7 +12,6 @@ Like what I've done? **[Consider supporting me on Patreon](http://patreon.com/gi
 
 * Unpacker for `.par` files.
 * Packer for `.par` files.
-    * **Untested!**
     * No compression (yet).
 
 ## Instructions
