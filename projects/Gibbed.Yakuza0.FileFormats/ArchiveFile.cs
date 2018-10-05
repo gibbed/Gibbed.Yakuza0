@@ -227,7 +227,7 @@ namespace Gibbed.Yakuza0.FileFormats
                 }
             }
 
-            var endian = this._Endian;
+            var endian = Endian.Big;
 
             byte[] directoryTableBytes;
             using (var temp = new MemoryStream())
