@@ -52,59 +52,37 @@ namespace Gibbed.Yakuza0.FileFormats
             get { return this._Entries; }
         }
 
-        private struct DirectoryEstimate
-        {
-            public int DirectoryCount;
-            public int FileCount;
-        }
-
         public static long EstimateHeaderSize(IEnumerable<string> paths)
         {
-            var counts = new Dictionary<string, DirectoryEstimate>();
+            var parentPaths = new List<string>();
 
-            DirectoryEstimate rootCount;
-            rootCount.DirectoryCount = 1; // include itself
-            rootCount.FileCount = 0;
+            int pathCount = 1;
+            int fileCount = 0;
 
             foreach (var path in paths)
             {
-                var parts = path.Split('\\');
-
-                var count = parts.Length;
-                if (count <= 1)
+                var separatorIndex = path.LastIndexOf('\\');
+                if (separatorIndex < 0)
                 {
-                    rootCount.FileCount++;
+                    fileCount++;
                     continue;
                 }
 
-                DirectoryEstimate directoryEstimate;
-
-                string directoryPath = "";
-                for (int i = 0; i < count - 2; i++)
+                var parentPath = path.Substring(0, separatorIndex);
+                if (parentPaths.Contains(parentPath) == false)
                 {
-                    directoryPath += parts[i].ToLowerInvariant() + '\\';
-                    counts.TryGetValue(directoryPath, out directoryEstimate);
-                    directoryEstimate.DirectoryCount++;
-                    counts[directoryPath] = directoryEstimate;
+                    parentPaths.Add(parentPath);
+                    pathCount++;
                 }
 
-                directoryPath += parts[count - 2].ToLowerInvariant() + '\\';
-                if (counts.TryGetValue(directoryPath, out directoryEstimate) == false)
-                {
-                    directoryEstimate.DirectoryCount = 1; // include itself
-                }
-                directoryEstimate.FileCount++;
-                counts[directoryPath] = directoryEstimate;
+                fileCount++;
             }
 
-            var totalPathCount = rootCount.DirectoryCount + counts.Sum(kv => kv.Value.DirectoryCount);
-            var totalFileCount = rootCount.FileCount + counts.Sum(kv => kv.Value.FileCount);
-
             return (32) + // header
-                   (64 * totalPathCount) + // directory names
-                   (64 * totalFileCount) + // file names
-                   (32 * totalPathCount) + // directory entries
-                   (32 * totalFileCount); // file entries
+                   (64 * pathCount) + // directory names
+                   (64 * fileCount) + // file names
+                   (32 * pathCount) + // directory entries
+                   (32 * fileCount); // file entries
         }
 
         private class NewDirectoryEntry
