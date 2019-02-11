@@ -162,16 +162,28 @@ namespace Gibbed.Yakuza0.FileFormats
                    (32 * fileCount); // file entries
         }
 
+        private struct NewFileEntry
+        {
+            public string Name;
+            public FileEntry Entry;
+
+            public NewFileEntry(string name, FileEntry entry)
+            {
+                this.Name = name;
+                this.Entry = entry;
+            }
+        }
+
         private class NewDirectoryEntry
         {
             private string _Name;
             private readonly Dictionary<string, NewDirectoryEntry> _Subdirectories;
-            private readonly Dictionary<string, KeyValuePair<string, FileEntry>> _Files;
+            private readonly Dictionary<string, NewFileEntry> _Files;
 
             public NewDirectoryEntry()
             {
                 this._Subdirectories = new Dictionary<string, NewDirectoryEntry>();
-                this._Files = new Dictionary<string, KeyValuePair<string, FileEntry>>();
+                this._Files = new Dictionary<string, NewFileEntry>();
             }
 
             public string Name
@@ -185,7 +197,7 @@ namespace Gibbed.Yakuza0.FileFormats
                 get { return this._Subdirectories; }
             }
 
-            public Dictionary<string, KeyValuePair<string, FileEntry>> Files
+            public Dictionary<string, NewFileEntry> Files
             {
                 get { return this._Files; }
             }
@@ -226,7 +238,7 @@ namespace Gibbed.Yakuza0.FileFormats
 
                 var fileName = parts[partCount - 1];
                 var fileKey = fileName.ToLowerInvariant();
-                directoryEntry.Files.Add(fileKey, new KeyValuePair<string, FileEntry>(fileName, fileEntry));
+                directoryEntry.Files.Add(fileKey, new NewFileEntry(fileName, fileEntry));
             }
 
             var directoryNames = new List<string>();
@@ -273,8 +285,8 @@ namespace Gibbed.Yakuza0.FileFormats
 
                 foreach (var kv in directoryEntry.Files.Values)
                 {
-                    var fileName = kv.Key;
-                    var fileEntry = kv.Value;
+                    var fileName = kv.Name;
+                    var fileEntry = kv.Entry;
 
                     RawFileEntry rawFileEntry;
                     rawFileEntry.CompressionFlags = fileEntry.IsCompressed == true ? 0x80000000u : 0u;
