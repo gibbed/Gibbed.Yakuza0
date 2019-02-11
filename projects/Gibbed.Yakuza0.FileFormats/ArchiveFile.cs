@@ -90,7 +90,10 @@ namespace Gibbed.Yakuza0.FileFormats
 
         public static long EstimateHeaderSize(IEnumerable<string> paths)
         {
-            var rootDirectoryEntry = new EstimateDirectoryEntry();
+            var rootDirectoryEntry = new EstimateDirectoryEntry()
+            {
+                Name = ".",
+            };
 
             foreach (var path in paths)
             {
@@ -134,7 +137,9 @@ namespace Gibbed.Yakuza0.FileFormats
             }
             else
             {
-                queue.Enqueue(new KeyValuePair<string, EstimateDirectoryEntry>(".", rootDirectoryEntry));
+                queue.Enqueue(new KeyValuePair<string, EstimateDirectoryEntry>(
+                    rootDirectoryEntry.Name.ToLowerInvariant(),
+                    rootDirectoryEntry));
             }
 
             int pathCount = 0;
@@ -205,7 +210,10 @@ namespace Gibbed.Yakuza0.FileFormats
 
         public void Serialize(Stream output)
         {
-            var rootDirectoryEntry = new NewDirectoryEntry();
+            var rootDirectoryEntry = new NewDirectoryEntry()
+            {
+                Name = "."
+            };
 
             foreach (var fileEntry in this._Entries)
             {
@@ -256,7 +264,9 @@ namespace Gibbed.Yakuza0.FileFormats
             }
             else
             {
-                queue.Enqueue(new KeyValuePair<string, NewDirectoryEntry>(".", rootDirectoryEntry));
+                queue.Enqueue(new KeyValuePair<string, NewDirectoryEntry>(
+                    rootDirectoryEntry.Name.ToLowerInvariant(),
+                    rootDirectoryEntry));
             }
 
             while (queue.Count > 0)
