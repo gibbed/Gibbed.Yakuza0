@@ -23,7 +23,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using Gibbed.IO;
 
@@ -32,6 +31,13 @@ namespace Gibbed.Yakuza0.FileFormats
     public class ArchiveFile
     {
         public const uint Signature = 0x50415243; // 'PARC'
+
+        private static readonly Encoding _Encoding;
+
+        static ArchiveFile()
+        {
+            _Encoding = Encoding.GetEncoding(932); // SJIS
+        }
 
         private Endian _Endian = Endian.Little;
         private readonly List<FileEntry> _Entries;
@@ -249,12 +255,12 @@ namespace Gibbed.Yakuza0.FileFormats
 
             foreach (var directoryName in directoryNames)
             {
-                output.WriteString(directoryName, 64, Encoding.ASCII);
+                output.WriteString(directoryName, 64, _Encoding);
             }
 
             foreach (var fileName in fileNames)
             {
-                output.WriteString(fileName, 64, Encoding.ASCII);
+                output.WriteString(fileName, 64, _Encoding);
             }
 
             output.WriteBytes(directoryTableBytes);
@@ -329,13 +335,13 @@ namespace Gibbed.Yakuza0.FileFormats
             var directoryNames = new string[directoryCount];
             for (uint i = 0; i < directoryCount; i++)
             {
-                directoryNames[i] = input.ReadString(64, true, Encoding.ASCII);
+                directoryNames[i] = input.ReadString(64, true, _Encoding);
             }
 
             var fileNames = new string[fileCount];
             for (uint i = 0; i < fileCount; i++)
             {
-                fileNames[i] = input.ReadString(64, true, Encoding.ASCII);
+                fileNames[i] = input.ReadString(64, true, _Encoding);
             }
 
             var rawDirectoryEntries = new RawDirectoryEntry[directoryCount];
