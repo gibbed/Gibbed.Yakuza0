@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Gibbed.IO;
 
@@ -58,30 +59,100 @@ namespace Gibbed.Yakuza0.FileFormats
             get { return this._Entries; }
         }
 
+        private class EstimateDirectoryEntry
+        {
+            private string _Name;
+            private readonly Dictionary<string, EstimateDirectoryEntry> _Subdirectories;
+            private int _FileCount;
+
+            public EstimateDirectoryEntry()
+            {
+                this._Subdirectories = new Dictionary<string, EstimateDirectoryEntry>();
+            }
+
+            public string Name
+            {
+                get { return this._Name; }
+                set { this._Name = value; }
+            }
+
+            public Dictionary<string, EstimateDirectoryEntry> Subdirectories
+            {
+                get { return this._Subdirectories; }
+            }
+
+            public int FileCount
+            {
+                get { return this._FileCount; }
+                set { this._FileCount = value; }
+            }
+        }
+
         public static long EstimateHeaderSize(IEnumerable<string> paths)
         {
-            var parentPaths = new List<string>();
-
-            int pathCount = 1;
-            int fileCount = 0;
+            var rootDirectoryEntry = new EstimateDirectoryEntry();
 
             foreach (var path in paths)
             {
-                var separatorIndex = path.LastIndexOf('\\');
-                if (separatorIndex < 0)
+                var directoryEntry = rootDirectoryEntry;
+
+                var parts = path.Split('\\');
+                var partCount = parts.Length;
+                if (partCount <= 0)
                 {
-                    fileCount++;
                     continue;
                 }
 
-                var parentPath = path.Substring(0, separatorIndex);
-                if (parentPaths.Contains(parentPath) == false)
+                if (partCount >= 2)
                 {
-                    parentPaths.Add(parentPath);
-                    pathCount++;
+                    for (int i = 0; i < partCount - 1; i++)
+                    {
+                        var subdirectoryKey = parts[i].ToLowerInvariant();
+
+                        EstimateDirectoryEntry subdirectory;
+                        if (directoryEntry.Subdirectories.TryGetValue(subdirectoryKey, out subdirectory) == false)
+                        {
+                            subdirectory = directoryEntry.Subdirectories[subdirectoryKey] = new EstimateDirectoryEntry()
+                            {
+                                Name = parts[i],
+                            };
+                        }
+                        directoryEntry = subdirectory;
+                    }
                 }
 
-                fileCount++;
+                directoryEntry.FileCount++;
+            }
+
+            var queue = new Queue<KeyValuePair<string, EstimateDirectoryEntry>>();
+
+            // If there is only a single subdirectory with no files, there is no need to use the root directory.
+            if (rootDirectoryEntry.Subdirectories.Count == 1 &&
+                rootDirectoryEntry.FileCount == 0)
+            {
+                queue.Enqueue(rootDirectoryEntry.Subdirectories.First());
+            }
+            else
+            {
+                queue.Enqueue(new KeyValuePair<string, EstimateDirectoryEntry>(".", rootDirectoryEntry));
+            }
+
+            int pathCount = 0;
+            int fileCount = 0;
+
+            while (queue.Count > 0)
+            {
+                var pair = queue.Dequeue();
+                var directoryEntry = pair.Value;
+
+                pathCount++;
+
+                foreach (var kv in directoryEntry.Subdirectories)
+                {
+                    queue.Enqueue(kv);
+                }
+
+                fileCount += directoryEntry.FileCount;
             }
 
             return (32) + // header
@@ -164,7 +235,17 @@ namespace Gibbed.Yakuza0.FileFormats
             var rawFileEntries = new List<RawFileEntry>();
 
             var queue = new Queue<KeyValuePair<string, NewDirectoryEntry>>();
-            queue.Enqueue(new KeyValuePair<string, NewDirectoryEntry>(".", rootDirectoryEntry));
+
+            // If there is only a single subdirectory with no files, there is no need to use the root directory.
+            if (rootDirectoryEntry.Subdirectories.Count == 1 &&
+                rootDirectoryEntry.Files.Count == 0)
+            {
+                queue.Enqueue(rootDirectoryEntry.Subdirectories.First());
+            }
+            else
+            {
+                queue.Enqueue(new KeyValuePair<string, NewDirectoryEntry>(".", rootDirectoryEntry));
+            }
 
             while (queue.Count > 0)
             {
