@@ -250,7 +250,7 @@ namespace Gibbed.Yakuza0.FileFormats
             while (queue.Count > 0)
             {
                 var pair = queue.Dequeue();
-                var directoryName = pair.Key;
+                //var directoryKey = pair.Key;
                 var directoryEntry = pair.Value;
 
                 RawDirectoryEntry rawDirectoryEntry;
@@ -264,7 +264,7 @@ namespace Gibbed.Yakuza0.FileFormats
                 rawDirectoryEntry.Unknown1C = 0;
 
                 rawDirectoryEntries.Add(rawDirectoryEntry);
-                directoryNames.Add(directoryName);
+                directoryNames.Add(directoryEntry.Name);
 
                 foreach (var kv in directoryEntry.Subdirectories)
                 {
