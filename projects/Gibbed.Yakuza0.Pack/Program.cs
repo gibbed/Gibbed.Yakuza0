@@ -100,7 +100,7 @@ namespace Gibbed.Yakuza0.Pack
                 inputPaths.AddRange(extras.Skip(1));
             }
 
-            var pendingEntries = new SortedDictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+            var pendingEntries = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (verbose == true)
             {

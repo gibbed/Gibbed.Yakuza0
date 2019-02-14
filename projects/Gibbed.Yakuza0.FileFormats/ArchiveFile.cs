@@ -290,12 +290,12 @@ namespace Gibbed.Yakuza0.FileFormats
                 rawDirectoryEntries.Add(rawDirectoryEntry);
                 directoryNames.Add(directoryEntry.Name);
 
-                foreach (var kv in directoryEntry.Subdirectories.OrderBy(kv => kv.Key))
+                foreach (var kv in directoryEntry.Subdirectories.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
                 {
                     queue.Enqueue(kv);
                 }
 
-                foreach (var kv in directoryEntry.Files.Values.OrderBy(kv => kv.Key))
+                foreach (var kv in directoryEntry.Files.Values.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
                 {
                     var fileName = kv.Name;
                     var fileEntry = kv.Entry;
