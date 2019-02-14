@@ -169,11 +169,13 @@ namespace Gibbed.Yakuza0.FileFormats
 
         private struct NewFileEntry
         {
+            public string Key;
             public string Name;
             public FileEntry Entry;
 
             public NewFileEntry(string name, FileEntry entry)
             {
+                this.Key = name.ToLowerInvariant();
                 this.Name = name;
                 this.Entry = entry;
             }
@@ -288,12 +290,12 @@ namespace Gibbed.Yakuza0.FileFormats
                 rawDirectoryEntries.Add(rawDirectoryEntry);
                 directoryNames.Add(directoryEntry.Name);
 
-                foreach (var kv in directoryEntry.Subdirectories)
+                foreach (var kv in directoryEntry.Subdirectories.OrderBy(kv => kv.Key))
                 {
                     queue.Enqueue(kv);
                 }
 
-                foreach (var kv in directoryEntry.Files.Values)
+                foreach (var kv in directoryEntry.Files.Values.OrderBy(kv => kv.Key))
                 {
                     var fileName = kv.Name;
                     var fileEntry = kv.Entry;
@@ -593,7 +595,7 @@ namespace Gibbed.Yakuza0.FileFormats
             public override string ToString()
             {
                 return string.Format(
-                    "dcount={0}, dindex={1}, fcount={2}, findex={3}, {4:X}, {5:X}, {6:X}, {7:X}",
+                    "dcount={0}, dindex={1}, fcount={2}, findex={3}, u10={4:X}, u14={5:X}, u18={6:X}, u1C={7:X}",
                     this.DirectoryCount,
                     this.DirectoryIndex,
                     this.FileCount,
@@ -660,7 +662,7 @@ namespace Gibbed.Yakuza0.FileFormats
             public override string ToString()
             {
                 return string.Format(
-                    "flags={0:X}, usize={1:X}, csize={2:X}, offset={3:X}, {4:X}, {5:X}, {6:X}, {7:X}",
+                    "flags={0:X}, usize={1:X}, csize={2:X}, offset={3:X}, u10={4:X}, u14={5:X}, u18={6:X}, u1C={7:X}",
                     this.CompressionFlags,
                     this.DataUncompressedSize,
                     this.DataCompressedSize,
