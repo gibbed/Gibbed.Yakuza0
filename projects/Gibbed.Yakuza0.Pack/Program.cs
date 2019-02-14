@@ -100,7 +100,7 @@ namespace Gibbed.Yakuza0.Pack
                 inputPaths.AddRange(extras.Skip(1));
             }
 
-            var pendingEntries = new SortedDictionary<string, KeyValuePair<string, string>>();
+            var pendingEntries = new SortedDictionary<string, string>();
 
             if (verbose == true)
             {
@@ -125,22 +125,22 @@ namespace Gibbed.Yakuza0.Pack
 
                     var partKey = partPath.ToLowerInvariant();
 
-                    KeyValuePair<string, string> previousPair;
-                    if (pendingEntries.TryGetValue(partKey, out previousPair) == true)
+                    string fullPathPrevious;
+                    if (pendingEntries.TryGetValue(partKey, out fullPathPrevious) == true)
                     {
                         if (verbose == true)
                         {
-                            Console.WriteLine("Ignoring duplicate of {0}:", previousPair.Key);
-                            Console.WriteLine("  Previously added from: {0}", previousPair.Value);
+                            Console.WriteLine("Ignoring duplicate of {0}:", partKey);
+                            Console.WriteLine("  Previously added from: {0}", fullPathPrevious);
                         }
                         else
                         {
-                            Console.WriteLine("Ignoring duplicate of {0}!", previousPair.Key);
+                            Console.WriteLine("Ignoring duplicate of {0}!", partKey);
                         }
                         continue;
                     }
 
-                    pendingEntries[partKey] = new KeyValuePair<string, string>(partPath, fullPath);
+                    pendingEntries[partKey] = fullPath;
                 }
             }
 
@@ -161,7 +161,7 @@ namespace Gibbed.Yakuza0.Pack
                 long total = pendingEntries.Count;
                 var padding = total.ToString(CultureInfo.InvariantCulture).Length;
 
-                foreach (var kv in pendingEntries.Values)
+                foreach (var kv in pendingEntries)
                 {
                     var partPath = kv.Key;
                     var fullPath = kv.Value;
