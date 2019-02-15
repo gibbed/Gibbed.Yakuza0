@@ -34,10 +34,17 @@ namespace Gibbed.Yakuza0.FileFormats
         public const uint Signature = 0x50415243; // 'PARC'
 
         private static readonly Encoding _Encoding;
+        private static readonly StringComparer _NameComparer;
 
         static ArchiveFile()
         {
             _Encoding = Encoding.GetEncoding(932); // SJIS
+            _NameComparer = StringComparer.Ordinal;
+        }
+
+        public static StringComparer NameComparer
+        {
+            get { return _NameComparer; }
         }
 
         private Endian _Endian = Endian.Little;
@@ -290,12 +297,12 @@ namespace Gibbed.Yakuza0.FileFormats
                 rawDirectoryEntries.Add(rawDirectoryEntry);
                 directoryNames.Add(directoryEntry.Name);
 
-                foreach (var kv in directoryEntry.Subdirectories.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+                foreach (var kv in directoryEntry.Subdirectories.OrderBy(kv => kv.Key, NameComparer))
                 {
                     queue.Enqueue(kv);
                 }
 
-                foreach (var kv in directoryEntry.Files.Values.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+                foreach (var kv in directoryEntry.Files.Values.OrderBy(kv => kv.Key, NameComparer))
                 {
                     var fileName = kv.Name;
                     var fileEntry = kv.Entry;
