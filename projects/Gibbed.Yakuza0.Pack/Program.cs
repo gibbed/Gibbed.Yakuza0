@@ -144,8 +144,6 @@ namespace Gibbed.Yakuza0.Pack
                 }
             }
 
-            const int alignment = 2048;
-
             var archive = new ArchiveFile()
             {
                 Endian = endian,
@@ -181,7 +179,7 @@ namespace Gibbed.Yakuza0.Pack
                     {
                         var dataSize = (uint)input.Length;
 
-                        output.Position = output.Position.Align(alignment);
+                        output.Position = output.Position.Align(ArchiveFile.Alignment);
 
                         if (output.Position > 0xfFFFFFFFFL)
                         {
@@ -203,7 +201,7 @@ namespace Gibbed.Yakuza0.Pack
                     }
                 }
 
-                output.SetLength(output.Position.Align(alignment)); // pad file ending
+                output.SetLength(output.Position.Align(ArchiveFile.Alignment)); // pad file ending
 
                 output.Position = 0;
                 archive.Serialize(output);

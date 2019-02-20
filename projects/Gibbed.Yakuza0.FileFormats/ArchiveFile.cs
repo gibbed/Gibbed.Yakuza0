@@ -33,6 +33,8 @@ namespace Gibbed.Yakuza0.FileFormats
     {
         public const uint Signature = 0x50415243; // 'PARC'
 
+        public const int Alignment = 2048;
+
         private static readonly Encoding _Encoding;
         private static readonly StringComparer _NameComparer;
 
@@ -145,8 +147,8 @@ namespace Gibbed.Yakuza0.FileFormats
             else
             {
                 queue.Enqueue(new KeyValuePair<string, EstimateDirectoryEntry>(
-                    rootDirectoryEntry.Name.ToLowerInvariant(),
-                    rootDirectoryEntry));
+                                  rootDirectoryEntry.Name.ToLowerInvariant(),
+                                  rootDirectoryEntry));
             }
 
             int pathCount = 0;
@@ -274,8 +276,8 @@ namespace Gibbed.Yakuza0.FileFormats
             else
             {
                 queue.Enqueue(new KeyValuePair<string, NewDirectoryEntry>(
-                    rootDirectoryEntry.Name.ToLowerInvariant(),
-                    rootDirectoryEntry));
+                                  rootDirectoryEntry.Name.ToLowerInvariant(),
+                                  rootDirectoryEntry));
             }
 
             while (queue.Count > 0)
@@ -356,10 +358,10 @@ namespace Gibbed.Yakuza0.FileFormats
             output.WriteValueU32(Signature, Endian.Big);
             output.WriteValueU8(2);
             output.WriteValueU8(endianness);
-            output.WriteValueU8(0);
+            output.WriteValueU8(0); // headerSizeHi
             output.WriteValueU8(0);
             output.WriteValueU32(0x00020001u, endian);
-            output.WriteValueU32(0, endian);
+            output.WriteValueU32(0, endian); // headerSizeLo
             output.WriteValueS32(rawDirectoryEntries.Count, endian);
             output.WriteValueS32(headerSize, endian);
             output.WriteValueS32(rawFileEntries.Count, endian);
@@ -379,24 +381,6 @@ namespace Gibbed.Yakuza0.FileFormats
             output.WriteBytes(fileTableBytes);
         }
 
-        private static byte GetEndianness(Endian endian)
-        {
-            switch (endian)
-            {
-                case Endian.Little:
-                {
-                    return 0;
-                }
-
-                case Endian.Big:
-                {
-                    return 1;
-                }
-            }
-
-            throw new NotSupportedException();
-        }
-
         public void Deserialize(Stream input)
         {
             var basePosition = input.Position;
@@ -404,45 +388,60 @@ namespace Gibbed.Yakuza0.FileFormats
             var magic = input.ReadValueU32(Endian.Big);
             if (magic != Signature)
             {
-                throw new FormatException();
+                throw new FormatException("bad header magic");
             }
 
             var version = input.ReadValueU8();
             if (version != 2)
             {
-                throw new FormatException();
+                throw new FormatException("bad header version");
             }
 
             var endianness = input.ReadValueU8();
             if (endianness != 0 && endianness != 1)
             {
-                throw new FormatException();
+                throw new FormatException("bad header endianness");
             }
             var endian = endianness == 0 ? Endian.Little : Endian.Big;
 
-            var unknown06 = input.ReadValueU8();
+            var headerSizeHi = input.ReadValueU8();
+
             var unknown07 = input.ReadValueU8();
-            if (unknown06 != 0 || unknown07 != 0)
+            if (unknown07 != 0)
             {
-                throw new FormatException();
+                throw new FormatException("bad header unknown07");
             }
 
             var unknown08 = input.ReadValueU32(endian);
             if (unknown08 != 0x00020001u)
             {
-                throw new FormatException();
+                throw new FormatException("bad header unknown08");
             }
 
-            var unknown0C = input.ReadValueU32(endian);
-            if (unknown0C != 0)
-            {
-                throw new FormatException();
-            }
-
+            var headerSizeLo = input.ReadValueU32(endian);
             var directoryCount = input.ReadValueU32(endian);
             var directoryTableOffset = input.ReadValueU32(endian);
             var fileCount = input.ReadValueU32(endian);
             var fileTableOffset = input.ReadValueU32(endian);
+
+            var headerSize = (headerSizeHi << 32) | headerSizeLo;
+            if (headerSize != 0)
+            {
+                var actualHeaderSize = 32L;
+                actualHeaderSize += 64 * (directoryCount + fileCount);
+                actualHeaderSize += 32 * directoryCount;
+                actualHeaderSize += 32 * fileCount;
+                actualHeaderSize = actualHeaderSize.Align(Alignment);
+                if (headerSize != actualHeaderSize)
+                {
+                    throw new FormatException("bad header size");
+                }
+            }
+
+            if (input.Length < basePosition + headerSize)
+            {
+                throw new EndOfStreamException("stream too small for all header data");
+            }
 
             var directoryNames = new string[directoryCount];
             for (uint i = 0; i < directoryCount; i++)
@@ -463,9 +462,20 @@ namespace Gibbed.Yakuza0.FileFormats
                 for (uint i = 0; i < directoryCount; i++)
                 {
                     var directoryEntry = rawDirectoryEntries[i] = RawDirectoryEntry.Read(input, endian);
-                    if (directoryEntry.Unknown14 != 0 || directoryEntry.Unknown18 != 0 || directoryEntry.Unknown1C != 0)
+
+                    if (directoryEntry.Unknown14 != 0)
                     {
-                        throw new FormatException();
+                        throw new FormatException("bad directory unknown14");
+                    }
+
+                    if (directoryEntry.Unknown18 != 0)
+                    {
+                        throw new FormatException("bad directory unknown18");
+                    }
+
+                    if (directoryEntry.Unknown1C != 0)
+                    {
+                        throw new FormatException("bad directory unknown1C");
                     }
                 }
             }
@@ -477,13 +487,20 @@ namespace Gibbed.Yakuza0.FileFormats
                 for (uint i = 0; i < fileCount; i++)
                 {
                     var fileEntry = rawFileEntries[i] = RawFileEntry.Read(input, endian);
+
                     if ((fileEntry.CompressionFlags & 0x7FFFFFFFu) != 0)
                     {
-                        throw new FormatException();
+                        throw new FormatException("bad file compression flags");
                     }
-                    if (fileEntry.Unknown14 != 0 || fileEntry.Unknown18 != 0)
+
+                    if (fileEntry.Unknown14 != 0)
                     {
-                        throw new FormatException();
+                        throw new FormatException("bad file unknown14");
+                    }
+
+                    if (fileEntry.Unknown18 != 0)
+                    {
+                        throw new FormatException("bad file unknown18");
                     }
                 }
             }
@@ -541,13 +558,31 @@ namespace Gibbed.Yakuza0.FileFormats
                 // no directories but there's a file?
                 if (fileCount > 0)
                 {
-                    throw new FormatException();
+                    throw new FormatException("bad directory count");
                 }
             }
 
             this._Endian = endian;
             this._Entries.Clear();
             this._Entries.AddRange(fileEntries);
+        }
+
+        private static byte GetEndianness(Endian endian)
+        {
+            switch (endian)
+            {
+                case Endian.Little:
+                {
+                    return 0;
+                }
+
+                case Endian.Big:
+                {
+                    return 1;
+                }
+            }
+
+            throw new NotSupportedException();
         }
 
         [Flags]
