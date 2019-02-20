@@ -424,21 +424,21 @@ namespace Gibbed.Yakuza0.FileFormats
             var fileCount = input.ReadValueU32(endian);
             var fileTableOffset = input.ReadValueU32(endian);
 
+            var actualHeaderSize = 32L;
+            actualHeaderSize += 64 * (directoryCount + fileCount);
+            actualHeaderSize += 32 * directoryCount;
+            actualHeaderSize += 32 * fileCount;
+
             var headerSize = (headerSizeHi << 32) | headerSizeLo;
             if (headerSize != 0)
             {
-                var actualHeaderSize = 32L;
-                actualHeaderSize += 64 * (directoryCount + fileCount);
-                actualHeaderSize += 32 * directoryCount;
-                actualHeaderSize += 32 * fileCount;
-                actualHeaderSize = actualHeaderSize.Align(Alignment);
-                if (headerSize != actualHeaderSize)
+                if (headerSize != actualHeaderSize.Align(Alignment))
                 {
                     throw new FormatException("bad header size");
                 }
             }
 
-            if (input.Length < basePosition + headerSize)
+            if (input.Length < basePosition + actualHeaderSize)
             {
                 throw new EndOfStreamException("stream too small for all header data");
             }
